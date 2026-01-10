@@ -1,10 +1,20 @@
 /**
  * KR-CLI DOMINION - Admin Supabase Client
- * Supabase client with service role for admin operations
+ * Supabase client for admin operations
+ * Credentials are injected by GitHub Actions from secrets
  */
 
-const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
-const SUPABASE_SERVICE_KEY = 'YOUR_SERVICE_ROLE_KEY'; // Use service key for admin ops
+// Config is injected by GitHub Actions build process
+// See .github/workflows/deploy.yml
+function getConfig() {
+    if (typeof window.SUPABASE_CONFIG === 'undefined') {
+        console.error('⚠️ SUPABASE_CONFIG not found. Make sure config.js is loaded.');
+        console.error('For local dev, create js/config.js with:');
+        console.error('window.SUPABASE_CONFIG = { url: "...", anonKey: "..." }');
+        return null;
+    }
+    return window.SUPABASE_CONFIG;
+}
 
 let adminClient = null;
 
@@ -14,29 +24,30 @@ let adminClient = null;
 async function initAdminClient() {
     if (adminClient) return adminClient;
 
-    if (typeof supabase === 'undefined') {
-        await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2');
+    const config = getConfig();
+    if (!config || !config.url || !config.anonKey) {
+        console.error('❌ Invalid Supabase configuration');
+        return null;
     }
 
-    // Use service role key for full access
-    adminClient = supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-    return adminClient;
-}
+    // Wait for Supabase SDK if not loaded
+    if (typeof supabase === 'undefined') {
+        console.error('❌ Supabase SDK not loaded');
+        return null;
+    }
 
-function loadScript(src) {
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-    });
+    adminClient = supabase.createClient(config.url, config.anonKey);
+    console.log('✅ Supabase admin client initialized');
+    return adminClient;
 }
 
 // ===== Admin Authentication =====
 
 async function adminLogin(email, password) {
     const client = await initAdminClient();
+    if (!client) {
+        return { success: false, error: 'Error de conexión con la base de datos' };
+    }
 
     // Check admin_users table
     const { data: admin, error } = await client
@@ -46,10 +57,11 @@ async function adminLogin(email, password) {
         .single();
 
     if (error || !admin) {
+        console.error('Admin lookup error:', error);
         return { success: false, error: 'Credenciales inválidas' };
     }
 
-    // For demo: simple password check (in production use proper bcrypt)
+    // For demo: simple password check
     // The password hash in migration is for: krcli_admin_2026
     const isValid = await verifyPassword(password, admin.password_hash);
 
@@ -76,7 +88,7 @@ async function adminLogin(email, password) {
 
 async function verifyPassword(password, hash) {
     // Simple verification for demo
-    // In production, use bcrypt.compare on the server
+    // In production, use bcrypt.compare on a server
     // For now, accept the default password
     if (password === 'krcli_admin_2026') {
         return true;
@@ -98,6 +110,7 @@ function adminLogout() {
 
 async function getAllUsers(page = 1, limit = 20, search = '') {
     const client = await initAdminClient();
+    if (!client) return { users: [], total: 0 };
 
     let query = client
         .from('cli_users')
@@ -121,6 +134,7 @@ async function getAllUsers(page = 1, limit = 20, search = '') {
 
 async function getUserById(userId) {
     const client = await initAdminClient();
+    if (!client) return null;
 
     const { data, error } = await client
         .from('cli_users')
@@ -133,6 +147,7 @@ async function getUserById(userId) {
 
 async function updateUser(userId, updates) {
     const client = await initAdminClient();
+    if (!client) return { success: false, error: 'No connection' };
 
     const { error } = await client
         .from('cli_users')
@@ -144,15 +159,19 @@ async function updateUser(userId, updates) {
 
 async function deleteUserById(userId) {
     const client = await initAdminClient();
+    if (!client) return { success: false, error: 'No connection' };
 
-    // Delete from auth.users (cascade will delete cli_users)
-    const { error } = await client.auth.admin.deleteUser(userId);
+    const { error } = await client
+        .from('cli_users')
+        .delete()
+        .eq('id', userId);
 
     return { success: !error, error: error?.message };
 }
 
 async function addCreditsToUser(email, amount) {
     const client = await initAdminClient();
+    if (!client) return { success: false, error: 'No connection' };
 
     const { data: user, error: findError } = await client
         .from('cli_users')
@@ -174,6 +193,7 @@ async function addCreditsToUser(email, amount) {
 
 async function activatePremium(email, days) {
     const client = await initAdminClient();
+    if (!client) return { success: false, error: 'No connection' };
 
     const { data: user, error: findError } = await client
         .from('cli_users')
@@ -203,6 +223,10 @@ async function activatePremium(email, days) {
 
 async function getAnalytics() {
     const client = await initAdminClient();
+    if (!client) return {
+        totalUsers: 0, activeUsers: 0, premiumUsers: 0,
+        freeUsers: 0, totalRevenue: 0, openTickets: 0
+    };
 
     try {
         // Get counts
@@ -246,18 +270,15 @@ async function getAnalytics() {
     } catch (e) {
         console.error('Analytics error:', e);
         return {
-            totalUsers: 0,
-            activeUsers: 0,
-            premiumUsers: 0,
-            freeUsers: 0,
-            totalRevenue: 0,
-            openTickets: 0
+            totalUsers: 0, activeUsers: 0, premiumUsers: 0,
+            freeUsers: 0, totalRevenue: 0, openTickets: 0
         };
     }
 }
 
 async function getRecentActivity(limit = 10) {
     const client = await initAdminClient();
+    if (!client) return [];
 
     const { data, error } = await client
         .from('web_activity_log')
@@ -272,6 +293,7 @@ async function getRecentActivity(limit = 10) {
 
 async function getTickets(status = 'all') {
     const client = await initAdminClient();
+    if (!client) return [];
 
     let query = client
         .from('support_tickets')
@@ -288,6 +310,7 @@ async function getTickets(status = 'all') {
 
 async function getTicketMessages(ticketId) {
     const client = await initAdminClient();
+    if (!client) return [];
 
     const { data, error } = await client
         .from('support_messages')
@@ -307,6 +330,8 @@ async function getTicketMessages(ticketId) {
 
 async function sendAdminReply(ticketId, message) {
     const client = await initAdminClient();
+    if (!client) return { success: false, error: 'No connection' };
+    
     const admin = getAdminSession();
 
     const { error } = await client
@@ -332,6 +357,7 @@ async function sendAdminReply(ticketId, message) {
 
 async function updateTicketStatus(ticketId, status) {
     const client = await initAdminClient();
+    if (!client) return { success: false };
 
     const { error } = await client
         .from('support_tickets')
@@ -341,7 +367,7 @@ async function updateTicketStatus(ticketId, status) {
     return { success: !error };
 }
 
-// Export
+// Export globally
 window.AdminSupabase = {
     init: initAdminClient,
     login: adminLogin,
