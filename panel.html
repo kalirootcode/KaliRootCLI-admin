@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Panel Admin | KR-CLI DOMINION</title>
+
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@400;700;900&display=swap"
+        rel="stylesheet">
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="admin-panel">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="logo-icon">💀</span>
+            <span class="logo-text">KR-ADMIN</span>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#dashboard" class="nav-item active" data-section="dashboard">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="#users" class="nav-item" data-section="users">
+                <span class="nav-icon">👥</span>
+                <span class="nav-text">Usuarios</span>
+            </a>
+            <a href="#sessions" class="nav-item" data-section="sessions">
+                <span class="nav-icon">🌐</span>
+                <span class="nav-text">Sesiones</span>
+                <span class="badge live" id="live-sessions">0</span>
+            </a>
+            <a href="#news" class="nav-item" data-section="news">
+                <span class="nav-icon">��</span>
+                <span class="nav-text">Noticias</span>
+            </a>
+            <a href="#support" class="nav-item" data-section="support">
+                <span class="nav-icon">💬</span>
+                <span class="nav-text">Soporte</span>
+                <span class="badge" id="ticket-count">0</span>
+            </a>
+            <a href="#credits" class="nav-item" data-section="credits">
+                <span class="nav-icon">💳</span>
+                <span class="nav-text">Créditos</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button onclick="adminLogout()" class="logout-btn">
+                <span>🚪</span> Cerrar Sesión
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <button class="menu-toggle" id="menu-toggle">☰</button>
+            <h1 id="page-title">Dashboard</h1>
+            <div class="topbar-right">
+                <span class="admin-name" id="admin-name">Admin</span>
+                <span class="status-dot online"></span>
+            </div>
+        </header>
+
+        <!-- Dashboard Section -->
+        <section class="content-section active" id="section-dashboard">
+            <div class="stats-row">
+                <div class="stat-card glass">
+                    <div class="stat-icon blue">👥</div>
+                    <div class="stat-info">
+                        <span class="stat-value counter" id="total-users">0</span>
+                        <span class="stat-label">Total Usuarios</span>
+                    </div>
+                </div>
+                <div class="stat-card glass">
+                    <div class="stat-icon green">✓</div>
+                    <div class="stat-info">
+                        <span class="stat-value counter" id="active-users">0</span>
+                        <span class="stat-label">Activos (30d)</span>
+                    </div>
+                </div>
+                <div class="stat-card glass">
+                    <div class="stat-icon gold">👑</div>
+                    <div class="stat-info">
+                        <span class="stat-value counter" id="premium-users">0</span>
+                        <span class="stat-label">Premium</span>
+                    </div>
+                </div>
+                <div class="stat-card glass">
+                    <div class="stat-icon cyan">💰</div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="total-revenue">$0</span>
+                        <span class="stat-label">Ingresos</span>
+                    </div>
+                </div>
+                <div class="stat-card glass">
+                    <div class="stat-icon purple">🌐</div>
+                    <div class="stat-info">
+                        <span class="stat-value counter" id="active-sessions">0</span>
+                        <span class="stat-label">Sesiones Activas</span>
+                    </div>
+                </div>
+                <div class="stat-card glass">
+                    <div class="stat-icon red">⚡</div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="avg-latency">0ms</span>
+                        <span class="stat-label">Latencia API</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-row">
+                <div class="chart-card glass">
+                    <h3>Usuarios por Tipo</h3>
+                    <canvas id="users-chart"></canvas>
+                </div>
+                <div class="chart-card glass">
+                    <h3>Tickets de Soporte</h3>
+                    <canvas id="tickets-chart"></canvas>
+                </div>
+                <div class="chart-card glass">
+                    <h3>Uso de Créditos (7 días)</h3>
+                    <canvas id="credits-usage-chart"></canvas>
+                </div>
+                <div class="chart-card glass">
+                    <h3>Sesiones por País</h3>
+                    <canvas id="geo-chart"></canvas>
+                </div>
+            </div>
+
+            <div class="recent-activity glass">
+                <h3>Actividad Reciente</h3>
+                <div class="activity-list" id="activity-list">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Users Section -->
+        <section class="content-section" id="section-users">
+            <div class="section-header">
+                <div class="search-box">
+                    <input type="text" id="user-search" placeholder="Buscar usuario...">
+                    <button onclick="searchUsers()">🔍</button>
+                </div>
+                <div class="header-actions">
+                    <button class="btn-secondary" onclick="exportUsersCSV()">📥 Exportar CSV</button>
+                    <button class="btn-primary" onclick="showAddUserModal()">+ Agregar Usuario</button>
+                </div>
+            </div>
+
+            <div class="table-container glass">
+                <table class="data-table" id="users-table">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Username</th>
+                            <th>Plan</th>
+                            <th>Créditos</th>
+                            <th>Gastado</th>
+                            <th>Última Sesión</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-tbody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination" id="users-pagination">
+                <!-- Pagination buttons -->
+            </div>
+        </section>
+
+        <!-- Sessions Section (NEW) -->
+        <section class="content-section" id="section-sessions">
+            <div class="section-header">
+                <h2>📡 Monitor de Sesiones en Tiempo Real</h2>
+                <div class="header-actions">
+                    <select id="session-filter">
+                        <option value="all">Todas las Sesiones</option>
+                        <option value="today">Hoy</option>
+                        <option value="week">Esta Semana</option>
+                        <option value="vpn">Solo VPN</option>
+                    </select>
+                    <button class="btn-secondary" onclick="refreshSessions()">🔄 Actualizar</button>
+                </div>
+            </div>
+
+            <div class="sessions-stats">
+                <div class="mini-stat glass">
+                    <span class="mini-icon">🖥️</span>
+                    <div>
+                        <span class="mini-value" id="sessions-linux">0</span>
+                        <span class="mini-label">Linux</span>
+                    </div>
+                </div>
+                <div class="mini-stat glass">
+                    <span class="mini-icon">📱</span>
+                    <div>
+                        <span class="mini-value" id="sessions-termux">0</span>
+                        <span class="mini-label">Termux</span>
+                    </div>
+                </div>
+                <div class="mini-stat glass">
+                    <span class="mini-icon">🛡️</span>
+                    <div>
+                        <span class="mini-value" id="sessions-vpn">0</span>
+                        <span class="mini-label">Con VPN</span>
+                    </div>
+                </div>
+                <div class="mini-stat glass">
+                    <span class="mini-icon">🌍</span>
+                    <div>
+                        <span class="mini-value" id="sessions-countries">0</span>
+                        <span class="mini-label">Países</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container glass">
+                <table class="data-table" id="sessions-table">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>País</th>
+                            <th>Ciudad</th>
+                            <th>Distro</th>
+                            <th>IP</th>
+                            <th>VPN</th>
+                            <th>Inicio</th>
+                            <th>Última Actividad</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sessions-tbody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- News Section (NEW) -->
+        <section class="content-section" id="section-news">
+            <div class="section-header">
+                <h2>📰 Gestión de Noticias</h2>
+                <button class="btn-primary" onclick="showAddNewsModal()">+ Agregar Noticia</button>
+            </div>
+
+            <div class="news-categories">
+                <button class="category-btn active" data-cat="all">Todas</button>
+                <button class="category-btn" data-cat="vulnerabilities">🔓 Vulnerabilidades</button>
+                <button class="category-btn" data-cat="exploits">💥 Exploits</button>
+                <button class="category-btn" data-cat="breaches">🔴 Breaches</button>
+                <button class="category-btn" data-cat="events">📅 Eventos</button>
+            </div>
+
+            <div class="news-grid" id="news-grid">
+                <!-- Populated by JS -->
+            </div>
+
+            <div class="news-sources glass">
+                <h3>🔗 Fuentes de Búsqueda</h3>
+                <p class="sources-info">Las noticias se agregan automáticamente desde DuckDuckGo Search. Aquí puedes agregar links manuales que aparecerán fijos en el feed.</p>
+                <div class="manual-links" id="manual-links">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Support Section -->
+        <section class="content-section" id="section-support">
+            <div class="support-layout">
+                <div class="tickets-list glass">
+                    <div class="tickets-header">
+                        <h3>Tickets</h3>
+                        <select id="ticket-filter">
+                            <option value="all">Todos</option>
+                            <option value="open" selected>Abiertos</option>
+                            <option value="in_progress">En Progreso</option>
+                            <option value="resolved">Resueltos</option>
+                        </select>
+                    </div>
+                    <div class="tickets-items" id="tickets-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div class="ticket-chat glass" id="ticket-chat">
+                    <div class="chat-placeholder">
+                        <span>💬</span>
+                        <p>Selecciona un ticket para ver la conversación</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Credits Section -->
+        <section class="content-section" id="section-credits">
+            <div class="credits-tools">
+                <div class="tool-card glass">
+                    <h3>⚡ Agregar Créditos</h3>
+                    <form id="add-credits-form">
+                        <div class="form-group">
+                            <label>Email del Usuario</label>
+                            <input type="email" id="credit-email" required placeholder="user@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Cantidad de Créditos</label>
+                            <input type="number" id="credit-amount" required min="1" value="100">
+                        </div>
+                        <button type="submit" class="btn-primary">Agregar Créditos</button>
+                    </form>
+                </div>
+
+                <div class="tool-card glass">
+                    <h3>👑 Activar Premium</h3>
+                    <form id="activate-premium-form">
+                        <div class="form-group">
+                            <label>Email del Usuario</label>
+                            <input type="email" id="premium-email" required placeholder="user@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Duración (días)</label>
+                            <input type="number" id="premium-days" required min="1" value="30">
+                        </div>
+                        <button type="submit" class="btn-primary">Activar Premium</button>
+                    </form>
+                </div>
+
+                <div class="tool-card glass">
+                    <h3>📊 Estadísticas de Créditos</h3>
+                    <div class="credits-stats">
+                        <div class="credit-stat">
+                            <span class="credit-val" id="total-credits-available">0</span>
+                            <span class="credit-lbl">Créditos Disponibles</span>
+                        </div>
+                        <div class="credit-stat">
+                            <span class="credit-val" id="credits-used-today">0</span>
+                            <span class="credit-lbl">Usados Hoy</span>
+                        </div>
+                        <div class="credit-stat">
+                            <span class="credit-val" id="credits-purchased">0</span>
+                            <span class="credit-lbl">Comprados (Total)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="credits-history glass">
+                <h3>📋 Historial de Transacciones</h3>
+                <div class="history-list" id="credits-history">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Add User Modal -->
+    <div class="modal" id="add-user-modal">
+        <div class="modal-content glass">
+            <div class="modal-header">
+                <h2>Agregar Usuario</h2>
+                <button class="modal-close" onclick="closeModal('add-user-modal')">&times;</button>
+            </div>
+            <form id="add-user-form">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="new-user-email" required>
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="new-user-username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="new-user-password" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label>Créditos Iniciales</label>
+                    <input type="number" id="new-user-credits" value="500">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('add-user-modal')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Crear Usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal" id="edit-user-modal">
+        <div class="modal-content glass">
+            <div class="modal-header">
+                <h2>Editar Usuario</h2>
+                <button class="modal-close" onclick="closeModal('edit-user-modal')">&times;</button>
+            </div>
+            <form id="edit-user-form">
+                <input type="hidden" id="edit-user-id">
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="edit-user-email" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="edit-user-username">
+                </div>
+                <div class="form-group">
+                    <label>Créditos</label>
+                    <input type="number" id="edit-user-credits">
+                </div>
+                <div class="form-group">
+                    <label>Estado Premium</label>
+                    <select id="edit-user-status">
+                        <option value="free">Free</option>
+                        <option value="premium">Premium</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-danger" onclick="deleteUser()">Eliminar</button>
+                    <button type="submit" class="btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add News Modal -->
+    <div class="modal" id="add-news-modal">
+        <div class="modal-content glass">
+            <div class="modal-header">
+                <h2>Agregar Noticia Manual</h2>
+                <button class="modal-close" onclick="closeModal('add-news-modal')">&times;</button>
+            </div>
+            <form id="add-news-form">
+                <div class="form-group">
+                    <label>Título</label>
+                    <input type="text" id="news-title" required placeholder="Título de la noticia">
+                </div>
+                <div class="form-group">
+                    <label>URL</label>
+                    <input type="url" id="news-url" required placeholder="https://...">
+                </div>
+                <div class="form-group">
+                    <label>Categoría</label>
+                    <select id="news-category">
+                        <option value="vulnerabilities">Vulnerabilidades</option>
+                        <option value="exploits">Exploits</option>
+                        <option value="breaches">Breaches</option>
+                        <option value="events">Eventos</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Descripción (opcional)</label>
+                    <textarea id="news-description" rows="3" placeholder="Breve descripción..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('add-news-modal')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Agregar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="js/supabase-admin.js"></script>
+    <script src="js/auth-admin.js"></script>
+    <script src="js/users.js"></script>
+    <script src="js/support.js"></script>
+    <script src="js/analytics.js"></script>
+    <script src="js/credits.js"></script>
+    <script src="js/sessions.js"></script>
+    <script src="js/news.js"></script>
+</body>
+
+</html>
