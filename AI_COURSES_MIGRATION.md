@@ -25,6 +25,23 @@ CREATE TABLE IF NOT EXISTS ai_courses (
     slug TEXT UNIQUE NOT NULL,
     description TEXT,
     icon TEXT DEFAULT '📚',
+    category TEXT DEFAULT 'reconnaissance' CHECK (category IN (
+        'reconnaissance',
+        'resource-development', 
+        'initial-access',
+        'execution',
+        'persistence',
+        'privilege-escalation',
+        'defense-evasion',
+        'credential-access',
+        'discovery',
+        'lateral-movement',
+        'collection',
+        'exfiltration',
+        'forensics',
+        'web-security',
+        'malware-analysis'
+    )),
     difficulty TEXT DEFAULT 'intermediate' CHECK (difficulty IN ('beginner', 'intermediate', 'advanced', 'expert')),
     duration TEXT DEFAULT '2-4 horas',
     content JSONB NOT NULL,
@@ -42,6 +59,15 @@ CREATE TABLE IF NOT EXISTS ai_courses (
 CREATE INDEX IF NOT EXISTS idx_course_links_status ON course_links(status);
 CREATE INDEX IF NOT EXISTS idx_ai_courses_published ON ai_courses(is_published);
 CREATE INDEX IF NOT EXISTS idx_ai_courses_slug ON ai_courses(slug);
+CREATE INDEX IF NOT EXISTS idx_ai_courses_category ON ai_courses(category);
+```
+
+## Add Category to Existing Table (Run if table already exists)
+
+```sql
+-- If table already exists, add category column
+ALTER TABLE ai_courses 
+ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'reconnaissance';
 ```
 
 ## Triggers

@@ -382,8 +382,73 @@ function renderCourseLinks() {
     }).join('');
 }
 
-// Publish directly without preview
+// Course categories with colors
+const COURSE_CATEGORIES = {
+    'reconnaissance': { name: 'Reconocimiento', color: '#3b82f6', icon: 'fa-search' },
+    'resource-development': { name: 'Desarrollo de Recursos', color: '#8b5cf6', icon: 'fa-tools' },
+    'initial-access': { name: 'Acceso Inicial', color: '#ef4444', icon: 'fa-door-open' },
+    'execution': { name: 'Ejecución', color: '#f59e0b', icon: 'fa-play' },
+    'persistence': { name: 'Persistencia', color: '#10b981', icon: 'fa-anchor' },
+    'privilege-escalation': { name: 'Escalada de Privilegios', color: '#ec4899', icon: 'fa-arrow-up' },
+    'defense-evasion': { name: 'Evasión de Defensas', color: '#6366f1', icon: 'fa-eye-slash' },
+    'credential-access': { name: 'Acceso a Credenciales', color: '#14b8a6', icon: 'fa-key' },
+    'discovery': { name: 'Descubrimiento', color: '#84cc16', icon: 'fa-binoculars' },
+    'lateral-movement': { name: 'Movimiento Lateral', color: '#f97316', icon: 'fa-arrows-alt-h' },
+    'collection': { name: 'Recolección', color: '#06b6d4', icon: 'fa-database' },
+    'exfiltration': { name: 'Exfiltración', color: '#dc2626', icon: 'fa-upload' },
+    'forensics': { name: 'Forense Digital', color: '#0ea5e9', icon: 'fa-microscope' },
+    'web-security': { name: 'Seguridad Web', color: '#a855f7', icon: 'fa-globe' },
+    'malware-analysis': { name: 'Análisis de Malware', color: '#be123c', icon: 'fa-virus' }
+};
+
+// Publish with category selection
 async function publishCourse(courseId) {
+    // Show category selection modal
+    showCategoryModal(courseId);
+}
+
+function showCategoryModal(courseId) {
+    // Remove existing modal if any
+    const existing = document.getElementById('category-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'category-modal';
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content glass" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Seleccionar Categoría</h2>
+                <button class="modal-close" onclick="closeCategoryModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: rgba(255,255,255,0.7);">Selecciona la categoría del curso antes de publicar:</p>
+                <select id="course-category-select" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(6,182,212,0.3); border-radius: 8px; color: #fff; font-size: 1rem;">
+                    ${Object.entries(COURSE_CATEGORIES).map(([key, cat]) => `
+                        <option value="${key}" style="background: #1a1a2e;">${cat.name}</option>
+                    `).join('')}
+                </select>
+            </div>
+            <div class="modal-footer" style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn-secondary" onclick="closeCategoryModal()">Cancelar</button>
+                <button class="btn-primary" onclick="confirmPublish('${courseId}')">
+                    <i class="fas fa-rocket"></i> Publicar
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function closeCategoryModal() {
+    const modal = document.getElementById('category-modal');
+    if (modal) modal.remove();
+}
+
+async function confirmPublish(courseId) {
+    const category = document.getElementById('course-category-select').value;
+    closeCategoryModal();
+
     const client = await initAdminClient();
     if (!client) return;
 
@@ -400,7 +465,8 @@ async function publishCourse(courseId) {
             .from('ai_courses')
             .update({
                 is_published: true,
-                published_at: new Date().toISOString()
+                published_at: new Date().toISOString(),
+                category: category
             })
             .eq('id', courseId);
 
@@ -413,6 +479,7 @@ async function publishCourse(courseId) {
 
         showToast('¡Curso publicado!', 'success');
         loadCourseLinks();
+        loadPublishedCourses();
     } catch (e) {
         console.error('Error publishing:', e);
         showToast('Error publicando', 'error');
