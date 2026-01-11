@@ -1,0 +1,472 @@
+/**
+ * KR-CLI DOMINION - Admin Courses Management
+ * Manages AI course generation and publishing
+ */
+
+// API Base URL - uses render backend
+const COURSES_API = 'https://kalirootcli.onrender.com/api/education';
+
+// State
+let courseLinks = [];
+let currentPreviewCourse = null;
+
+// Initialize on section change
+document.addEventListener('DOMContentLoaded', () => {
+    // Add form listener
+    const addForm = document.getElementById('add-course-link-form');
+    if (addForm) {
+        addForm.addEventListener('submit', handleAddCourseLink);
+    }
+
+    // Filter change listener
+    const filter = document.getElementById('course-status-filter');
+    if (filter) {
+        filter.addEventListener('change', renderCourseLinks);
+    }
+});
+
+// ===== Course Links CRUD =====
+
+async function loadCourseLinks() {
+    const client = await initAdminClient();
+    if (!client) return;
+
+    try {
+        const { data, error } = await client
+            .from('course_links')
+            .select('*, ai_courses(*)')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        courseLinks = data || [];
+        renderCourseLinks();
+
+        // Update badge count
+        const pendingCount = courseLinks.filter(l => l.status === 'pending' || l.status === 'completed').length;
+        document.getElementById('courses-count').textContent = pendingCount;
+    } catch (e) {
+        console.error('Error loading course links:', e);
+        showToast('Error cargando links de cursos', 'error');
+    }
+}
+
+async function handleAddCourseLink(e) {
+    e.preventDefault();
+
+    const urlInput = document.getElementById('course-url');
+    const url = urlInput.value.trim();
+
+    if (!url) return;
+
+    const client = await initAdminClient();
+    if (!client) return;
+
+    try {
+        const admin = getAdminSession();
+
+        const { error } = await client
+            .from('course_links')
+            .insert({
+                url: url,
+                status: 'pending',
+                created_by: admin?.id
+            });
+
+        if (error) throw error;
+
+        showToast('Link agregado correctamente', 'success');
+        urlInput.value = '';
+        loadCourseLinks();
+    } catch (e) {
+        console.error('Error adding course link:', e);
+        showToast('Error agregando link: ' + e.message, 'error');
+    }
+}
+
+async function deleteCourseLink(linkId) {
+    if (!confirm('¿Eliminar este link y su curso asociado?')) return;
+
+    const client = await initAdminClient();
+    if (!client) return;
+
+    try {
+        const { error } = await client
+            .from('course_links')
+            .delete()
+            .eq('id', linkId);
+
+        if (error) throw error;
+
+        showToast('Link eliminado', 'success');
+        loadCourseLinks();
+    } catch (e) {
+        console.error('Error deleting link:', e);
+        showToast('Error eliminando link', 'error');
+    }
+}
+
+// ===== Course Generation =====
+
+async function generateCourse(linkId) {
+    const client = await initAdminClient();
+    if (!client) return;
+
+    // Update status to generating
+    await client
+        .from('course_links')
+        .update({ status: 'generating' })
+        .eq('id', linkId);
+
+    loadCourseLinks();
+    showToast('Iniciando generación de curso con IA...', 'info');
+
+    try {
+        // Call the backend API to generate course
+        const response = await fetch(`${COURSES_API}/admin/generate-course/${linkId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showToast('¡Curso generado exitosamente!', 'success');
+            loadCourseLinks();
+        } else {
+            throw new Error(result.error || 'Error desconocido');
+        }
+    } catch (e) {
+        console.error('Error generating course:', e);
+
+        // Update status to error
+        await client
+            .from('course_links')
+            .update({
+                status: 'error',
+                error_message: e.message
+            })
+            .eq('id', linkId);
+
+        showToast('Error generando curso: ' + e.message, 'error');
+        loadCourseLinks();
+    }
+}
+
+// ===== Preview & Publish =====
+
+async function previewCourse(linkId) {
+    const link = courseLinks.find(l => l.id === linkId);
+    if (!link || !link.ai_courses || link.ai_courses.length === 0) {
+        showToast('No hay curso generado para previsualizar', 'error');
+        return;
+    }
+
+    const course = link.ai_courses[0];
+    currentPreviewCourse = course;
+
+    const modal = document.getElementById('course-preview-modal');
+    const titleEl = document.getElementById('preview-title');
+    const contentEl = document.getElementById('preview-content');
+    const publishBtn = document.getElementById('publish-btn');
+
+    titleEl.textContent = course.title;
+    publishBtn.style.display = course.is_published ? 'none' : 'block';
+
+    // Render course preview
+    contentEl.innerHTML = renderCoursePreview(course);
+
+    modal.classList.add('active');
+}
+
+function renderCoursePreview(course) {
+    const content = course.content || {};
+
+    let html = `
+        <div class="course-preview-header">
+            <span class="course-icon">${course.icon || '📚'}</span>
+            <div class="course-meta">
+                <span class="difficulty ${course.difficulty}">${course.difficulty}</span>
+                <span class="duration">⏱️ ${course.duration || '2-4 horas'}</span>
+            </div>
+        </div>
+        <p class="course-description">${course.description || ''}</p>
+    `;
+
+    // Introduction
+    if (content.intro) {
+        html += `<div class="preview-intro"><h3>📖 Introducción</h3><p>${content.intro}</p></div>`;
+    }
+
+    // Objectives
+    if (content.objectives && content.objectives.length) {
+        html += `
+            <div class="preview-objectives">
+                <h3>🎯 Objetivos</h3>
+                <ul>${content.objectives.map(o => `<li>${o}</li>`).join('')}</ul>
+            </div>
+        `;
+    }
+
+    // Modules
+    if (content.modules && content.modules.length) {
+        html += '<div class="preview-modules"><h3>📚 Módulos</h3>';
+        content.modules.forEach((module, idx) => {
+            html += `
+                <div class="preview-module">
+                    <h4>${idx + 1}. ${module.title}</h4>
+                    ${module.sections ? module.sections.map(section => `
+                        <div class="preview-section">
+                            <h5>${section.title}</h5>
+                            <p>${section.theory?.substring(0, 300)}...</p>
+                            ${section.commands ? `
+                                <div class="preview-commands">
+                                    ${section.commands.slice(0, 2).map(cmd => `
+                                        <code>${cmd.command}</code>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('') : ''}
+                </div>
+            `;
+        });
+        html += '</div>';
+    }
+
+    return html;
+}
+
+async function publishCurrentCourse() {
+    if (!currentPreviewCourse) return;
+
+    const client = await initAdminClient();
+    if (!client) return;
+
+    try {
+        const { error } = await client
+            .from('ai_courses')
+            .update({
+                is_published: true,
+                published_at: new Date().toISOString()
+            })
+            .eq('id', currentPreviewCourse.id);
+
+        if (error) throw error;
+
+        // Also update link status
+        await client
+            .from('course_links')
+            .update({ status: 'published' })
+            .eq('id', currentPreviewCourse.link_id);
+
+        showToast('¡Curso publicado exitosamente!', 'success');
+        closeModal('course-preview-modal');
+        loadCourseLinks();
+    } catch (e) {
+        console.error('Error publishing course:', e);
+        showToast('Error publicando curso', 'error');
+    }
+}
+
+async function unpublishCourse(courseId) {
+    const client = await initAdminClient();
+    if (!client) return;
+
+    try {
+        const { data: course, error: fetchError } = await client
+            .from('ai_courses')
+            .select('link_id')
+            .eq('id', courseId)
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        const { error } = await client
+            .from('ai_courses')
+            .update({ is_published: false, published_at: null })
+            .eq('id', courseId);
+
+        if (error) throw error;
+
+        // Update link status back to completed
+        await client
+            .from('course_links')
+            .update({ status: 'completed' })
+            .eq('id', course.link_id);
+
+        showToast('Curso despublicado', 'success');
+        loadCourseLinks();
+    } catch (e) {
+        console.error('Error unpublishing:', e);
+        showToast('Error despublicando curso', 'error');
+    }
+}
+
+// ===== Rendering =====
+
+function renderCourseLinks() {
+    const container = document.getElementById('course-links-list');
+    if (!container) return;
+
+    const filter = document.getElementById('course-status-filter')?.value || 'all';
+
+    let filtered = courseLinks;
+    if (filter !== 'all') {
+        filtered = courseLinks.filter(link => link.status === filter);
+    }
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <span>📭</span>
+                <p>No hay links de cursos${filter !== 'all' ? ' con este estado' : ''}</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = filtered.map(link => {
+        const course = link.ai_courses?.[0];
+        const statusClass = link.status;
+        const hasError = link.status === 'error';
+        const hasCourse = course && link.status !== 'pending' && link.status !== 'generating';
+
+        return `
+            <div class="course-link-item ${statusClass}">
+                <div class="link-status">
+                    <span class="status-dot ${statusClass}"></span>
+                </div>
+                <div class="link-info">
+                    <a href="${link.url}" target="_blank" class="link-url">${truncateUrl(link.url)}</a>
+                    ${course ? `<span class="course-title">${course.title}</span>` : ''}
+                    ${hasError ? `<span class="error-msg">${link.error_message || 'Error desconocido'}</span>` : ''}
+                    <span class="link-date">${formatDate(link.created_at)}</span>
+                </div>
+                <div class="link-actions">
+                    ${link.status === 'pending' ? `
+                        <button class="btn-small btn-primary" onclick="generateCourse('${link.id}')">
+                            🤖 Generar
+                        </button>
+                    ` : ''}
+                    ${link.status === 'generating' ? `
+                        <span class="generating-indicator">⏳ Generando...</span>
+                    ` : ''}
+                    ${hasCourse && !course.is_published ? `
+                        <button class="btn-small btn-secondary" onclick="previewCourse('${link.id}')">
+                            👁️ Preview
+                        </button>
+                        <button class="btn-small btn-primary" onclick="publishCourse('${course.id}')">
+                            🚀 Publicar
+                        </button>
+                    ` : ''}
+                    ${course?.is_published ? `
+                        <span class="published-badge">✅ Publicado</span>
+                        <button class="btn-small btn-secondary" onclick="unpublishCourse('${course.id}')">
+                            ↩️ Despublicar
+                        </button>
+                    ` : ''}
+                    ${hasError ? `
+                        <button class="btn-small btn-secondary" onclick="generateCourse('${link.id}')">
+                            🔄 Reintentar
+                        </button>
+                    ` : ''}
+                    <button class="btn-small btn-danger" onclick="deleteCourseLink('${link.id}')">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Publish directly without preview
+async function publishCourse(courseId) {
+    const client = await initAdminClient();
+    if (!client) return;
+
+    try {
+        const { data: course, error: fetchErr } = await client
+            .from('ai_courses')
+            .select('link_id')
+            .eq('id', courseId)
+            .single();
+
+        if (fetchErr) throw fetchErr;
+
+        const { error } = await client
+            .from('ai_courses')
+            .update({
+                is_published: true,
+                published_at: new Date().toISOString()
+            })
+            .eq('id', courseId);
+
+        if (error) throw error;
+
+        await client
+            .from('course_links')
+            .update({ status: 'published' })
+            .eq('id', course.link_id);
+
+        showToast('¡Curso publicado!', 'success');
+        loadCourseLinks();
+    } catch (e) {
+        console.error('Error publishing:', e);
+        showToast('Error publicando', 'error');
+    }
+}
+
+function refreshCourseLinks() {
+    loadCourseLinks();
+}
+
+// ===== Helpers =====
+
+function truncateUrl(url) {
+    try {
+        const u = new URL(url);
+        let path = u.pathname;
+        if (path.length > 40) {
+            path = path.substring(0, 40) + '...';
+        }
+        return u.hostname + path;
+    } catch {
+        return url.length > 60 ? url.substring(0, 60) + '...' : url;
+    }
+}
+
+function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+// Initialize when section becomes visible
+const coursesObserver = new MutationObserver((mutations) => {
+    const section = document.getElementById('section-courses');
+    if (section && section.classList.contains('active')) {
+        loadCourseLinks();
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+        coursesObserver.observe(mainContent, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    }
+
+    // Also trigger on nav click
+    document.querySelectorAll('.nav-item[data-section="courses"]').forEach(el => {
+        el.addEventListener('click', () => {
+            setTimeout(loadCourseLinks, 100);
+        });
+    });
+});

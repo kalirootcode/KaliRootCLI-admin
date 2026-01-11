@@ -52,6 +52,11 @@
                 <span class="nav-icon">💳</span>
                 <span class="nav-text">Créditos</span>
             </a>
+            <a href="#courses" class="nav-item" data-section="courses">
+                <span class="nav-icon">📚</span>
+                <span class="nav-text">Cursos AI</span>
+                <span class="badge" id="courses-count">0</span>
+            </a>
         </nav>
 
         <div class="sidebar-footer">
@@ -272,7 +277,8 @@
 
             <div class="news-sources glass">
                 <h3>🔗 Fuentes de Búsqueda</h3>
-                <p class="sources-info">Las noticias se agregan automáticamente desde DuckDuckGo Search. Aquí puedes agregar links manuales que aparecerán fijos en el feed.</p>
+                <p class="sources-info">Las noticias se agregan automáticamente desde DuckDuckGo Search. Aquí puedes
+                    agregar links manuales que aparecerán fijos en el feed.</p>
                 <div class="manual-links" id="manual-links">
                     <!-- Populated by JS -->
                 </div>
@@ -365,7 +371,73 @@
                 </div>
             </div>
         </section>
+
+        <!-- AI Courses Section -->
+        <section class="content-section" id="section-courses">
+            <div class="section-header">
+                <h2>📚 Generador de Cursos con IA</h2>
+            </div>
+
+            <!-- Add Course Link Form -->
+            <div class="courses-add glass">
+                <h3>➕ Agregar Nuevo Curso</h3>
+                <p class="form-helper">Pega el link de un repositorio, documentación o herramienta. La IA analizará el
+                    sitio y generará un curso profesional.</p>
+                <form id="add-course-link-form">
+                    <div class="form-row">
+                        <input type="url" id="course-url" required
+                            placeholder="https://github.com/rapid7/metasploit-framework">
+                        <button type="submit" class="btn-primary">➕ Agregar</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Course Links List -->
+            <div class="courses-list glass">
+                <div class="list-header">
+                    <h3>📋 Links de Cursos</h3>
+                    <div class="list-filters">
+                        <select id="course-status-filter">
+                            <option value="all">Todos</option>
+                            <option value="pending">Pendientes</option>
+                            <option value="generating">Generando</option>
+                            <option value="completed">Completados</option>
+                            <option value="published">Publicados</option>
+                            <option value="error">Con Error</option>
+                        </select>
+                        <button class="btn-secondary" onclick="refreshCourseLinks()">🔄 Actualizar</button>
+                    </div>
+                </div>
+                <div class="status-legend">
+                    <span class="legend-item"><span class="dot pending"></span> Pendiente</span>
+                    <span class="legend-item"><span class="dot generating"></span> Generando</span>
+                    <span class="legend-item"><span class="dot completed"></span> Completado</span>
+                    <span class="legend-item"><span class="dot published"></span> Publicado</span>
+                    <span class="legend-item"><span class="dot error"></span> Error</span>
+                </div>
+                <div class="course-links-container" id="course-links-list">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </section>
     </main>
+
+    <!-- Course Preview Modal -->
+    <div class="modal" id="course-preview-modal">
+        <div class="modal-content glass course-preview">
+            <div class="modal-header">
+                <h2 id="preview-title">Vista Previa del Curso</h2>
+                <button class="modal-close" onclick="closeModal('course-preview-modal')">&times;</button>
+            </div>
+            <div class="preview-content" id="preview-content">
+                <!-- Course preview content -->
+            </div>
+            <div class="preview-actions">
+                <button class="btn-secondary" onclick="closeModal('course-preview-modal')">Cerrar</button>
+                <button class="btn-primary" id="publish-btn" onclick="publishCurrentCourse()">🚀 Publicar Curso</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Add User Modal -->
     <div class="modal" id="add-user-modal">
@@ -487,6 +559,7 @@
     <script src="js/credits.js"></script>
     <script src="js/sessions.js"></script>
     <script src="js/news.js"></script>
+    <script src="js/courses.js"></script>
 </body>
 
 </html>
