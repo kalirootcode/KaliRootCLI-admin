@@ -530,17 +530,26 @@ function renderPublishedCourses() {
     }
 
     container.innerHTML = publishedCourses.map(course => {
+        const category = course.category || 'reconnaissance';
+        const catInfo = COURSE_CATEGORIES[category] || COURSE_CATEGORIES['reconnaissance'];
+
         return `
-            <div class="course-link-item published">
+            <div class="course-link-item published" style="border-left: 4px solid ${catInfo.color};">
                 <div class="link-status">
                     <span class="status-dot published"></span>
                 </div>
                 <div class="link-info">
                     <span class="course-title">${course.icon || '📚'} ${course.title}</span>
+                    <span class="link-date" style="color: ${catInfo.color};">
+                        <i class="fas ${catInfo.icon}"></i> ${catInfo.name}
+                    </span>
                     <span class="link-date">Publicado: ${formatDate(course.published_at)}</span>
                     <span class="link-date">👁️ ${course.total_views || 0} vistas</span>
                 </div>
                 <div class="link-actions">
+                    <button class="btn-small" style="background: ${catInfo.color}; color: #000;" onclick="changeCourseCategory('${course.id}', '${category}')">
+                        <i class="fas fa-tag"></i> Cambiar Categoría
+                    </button>
                     <a href="https://kalirootcode.com/curso.html?slug=${course.slug}" target="_blank" class="btn-small btn-secondary">
                         🔗 Ver en Web
                     </a>
@@ -554,6 +563,70 @@ function renderPublishedCourses() {
             </div>
         `;
     }).join('');
+}
+
+// Change category of a published course
+function changeCourseCategory(courseId, currentCategory) {
+    // Remove existing modal if any
+    const existing = document.getElementById('change-category-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'change-category-modal';
+    modal.className = 'modal active';
+    modal.innerHTML = `
+        <div class="modal-content glass" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-tag"></i> Cambiar Categoría</h2>
+                <button class="modal-close" onclick="closeChangeCategoryModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: rgba(255,255,255,0.7);">Selecciona la nueva categoría:</p>
+                <select id="new-category-select" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(6,182,212,0.3); border-radius: 8px; color: #fff; font-size: 1rem;">
+                    ${Object.entries(COURSE_CATEGORIES).map(([key, cat]) => `
+                        <option value="${key}" ${key === currentCategory ? 'selected' : ''} style="background: #1a1a2e;">
+                            ${cat.name}
+                        </option>
+                    `).join('')}
+                </select>
+            </div>
+            <div class="modal-footer" style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn-secondary" onclick="closeChangeCategoryModal()">Cancelar</button>
+                <button class="btn-primary" onclick="confirmCategoryChange('${courseId}')">
+                    <i class="fas fa-check"></i> Guardar
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function closeChangeCategoryModal() {
+    const modal = document.getElementById('change-category-modal');
+    if (modal) modal.remove();
+}
+
+async function confirmCategoryChange(courseId) {
+    const newCategory = document.getElementById('new-category-select').value;
+    closeChangeCategoryModal();
+
+    const client = await initAdminClient();
+    if (!client) return;
+
+    try {
+        const { error } = await client
+            .from('ai_courses')
+            .update({ category: newCategory })
+            .eq('id', courseId);
+
+        if (error) throw error;
+
+        showToast('¡Categoría actualizada!', 'success');
+        loadPublishedCourses();
+    } catch (e) {
+        console.error('Error changing category:', e);
+        showToast('Error cambiando categoría', 'error');
+    }
 }
 
 async function hidePublishedCourse(courseId) {
