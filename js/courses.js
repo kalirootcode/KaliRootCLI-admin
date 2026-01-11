@@ -421,6 +421,134 @@ async function publishCourse(courseId) {
 
 function refreshCourseLinks() {
     loadCourseLinks();
+    loadPublishedCourses();
+}
+
+// ===== Published Courses Management =====
+
+let publishedCourses = [];
+
+async function loadPublishedCourses() {
+    const client = await initAdminClient();
+    if (!client) return;
+
+    try {
+        const { data, error } = await client
+            .from('ai_courses')
+            .select('*, course_links(url)')
+            .eq('is_published', true)
+            .order('published_at', { ascending: false });
+
+        if (error) throw error;
+
+        publishedCourses = data || [];
+        renderPublishedCourses();
+    } catch (e) {
+        console.error('Error loading published courses:', e);
+    }
+}
+
+function renderPublishedCourses() {
+    const container = document.getElementById('published-courses-list');
+    if (!container) return;
+
+    if (publishedCourses.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <span>📭</span>
+                <p>No hay cursos publicados</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = publishedCourses.map(course => {
+        return `
+            <div class="course-link-item published">
+                <div class="link-status">
+                    <span class="status-dot published"></span>
+                </div>
+                <div class="link-info">
+                    <span class="course-title">${course.icon || '📚'} ${course.title}</span>
+                    <span class="link-date">Publicado: ${formatDate(course.published_at)}</span>
+                    <span class="link-date">👁️ ${course.total_views || 0} vistas</span>
+                </div>
+                <div class="link-actions">
+                    <a href="https://kalirootcode.com/curso.html?slug=${course.slug}" target="_blank" class="btn-small btn-secondary">
+                        🔗 Ver en Web
+                    </a>
+                    <button class="btn-small btn-secondary" onclick="hidePublishedCourse('${course.id}')">
+                        👁️‍🗨️ Ocultar
+                    </button>
+                    <button class="btn-small btn-danger" onclick="deletePublishedCourse('${course.id}')">
+                        🗑️ Eliminar
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function hidePublishedCourse(courseId) {
+    if (!confirm('¿Ocultar este curso? Ya no será visible en la web pero se mantendrá en la base de datos.')) return;
+
+    const client = await initAdminClient();
+    if (!client) return;
+
+    try {
+        const { data: course, error: fetchError } = await client
+            .from('ai_courses')
+            .select('link_id')
+            .eq('id', courseId)
+            .single();
+
+        if (fetchError) throw fetchError;
+
+        const { error } = await client
+            .from('ai_courses')
+            .update({ is_published: false, published_at: null })
+            .eq('id', courseId);
+
+        if (error) throw error;
+
+        // Update link status
+        if (course?.link_id) {
+            await client
+                .from('course_links')
+                .update({ status: 'completed' })
+                .eq('id', course.link_id);
+        }
+
+        showToast('Curso ocultado de la web', 'success');
+        loadPublishedCourses();
+        loadCourseLinks();
+    } catch (e) {
+        console.error('Error hiding course:', e);
+        showToast('Error ocultando curso', 'error');
+    }
+}
+
+async function deletePublishedCourse(courseId) {
+    if (!confirm('¿ELIMINAR PERMANENTEMENTE este curso? Esta acción no se puede deshacer.')) return;
+
+    const client = await initAdminClient();
+    if (!client) return;
+
+    try {
+        const { error } = await client
+            .from('ai_courses')
+            .delete()
+            .eq('id', courseId);
+
+        if (error) throw error;
+
+        showToast('Curso eliminado permanentemente', 'success');
+        loadPublishedCourses();
+        loadCourseLinks();
+    } catch (e) {
+        console.error('Error deleting course:', e);
+        showToast('Error eliminando curso', 'error');
+    }
 }
 
 // ===== Helpers =====
@@ -454,6 +582,7 @@ const coursesObserver = new MutationObserver((mutations) => {
     const section = document.getElementById('section-courses');
     if (section && section.classList.contains('active')) {
         loadCourseLinks();
+        loadPublishedCourses();
     }
 });
 
@@ -466,7 +595,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Also trigger on nav click
     document.querySelectorAll('.nav-item[data-section="courses"]').forEach(el => {
         el.addEventListener('click', () => {
-            setTimeout(loadCourseLinks, 100);
+            setTimeout(() => {
+                loadCourseLinks();
+                loadPublishedCourses();
+            }, 100);
         });
     });
 });
