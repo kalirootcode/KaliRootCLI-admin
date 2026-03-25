@@ -17,6 +17,7 @@ function getConfig() {
 }
 
 let adminClient = null;
+let supabaseAdmin = null; // Make it globally accessible
 
 /**
  * Initialize Supabase admin client
@@ -37,6 +38,7 @@ async function initAdminClient() {
     }
 
     adminClient = supabase.createClient(config.url, config.anonKey);
+    supabaseAdmin = adminClient; // Assign to global variable
     console.log('✅ Supabase admin client initialized');
     return adminClient;
 }
