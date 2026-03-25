@@ -42,7 +42,7 @@ function showCategoryModal(id = null, name = '') {
     document.getElementById('category-id').value = id || '';
     document.getElementById('category-name').value = name || '';
     document.getElementById('category-modal-title').textContent = id ? 'Editar Categoría' : 'Nueva Categoría';
-    modal.style.display = 'flex';
+    modal.classList.add('active');
 }
 
 async function handleSaveCategory(e) {

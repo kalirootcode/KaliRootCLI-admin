@@ -154,7 +154,7 @@ async function showProductModal(productId = null) {
         }
     }
 
-    productModal.style.display = 'flex';
+    productModal.classList.add('active');
 }
 
 /**
@@ -299,6 +299,8 @@ async function deleteProduct(productId) {
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('section-products')) {
         loadProducts();
+        loadCategories();
+        loadCoupons();
 
         const searchInput = document.getElementById('product-search');
         if (searchInput) {

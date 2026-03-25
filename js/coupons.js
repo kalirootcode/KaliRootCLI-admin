@@ -52,7 +52,7 @@ function showCouponModal(id = null, code = '', discount = '', expires = '', acti
     document.getElementById('coupon-expires').value = expires || '';
     document.getElementById('coupon-active').checked = active;
     document.getElementById('coupon-modal-title').textContent = id ? 'Editar Cupón' : 'Nuevo Cupón';
-    modal.style.display = 'flex';
+    modal.classList.add('active');
 }
 
 async function handleSaveCoupon(e) {
