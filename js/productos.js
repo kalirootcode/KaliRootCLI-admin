@@ -2,17 +2,20 @@
 // KR-ADMIN - Productos (Infoproductos)
 // ============================================
 
-// --- DOM Elements ---
-const productsTbody = document.getElementById('products-tbody');
-const productModal = document.getElementById('product-modal');
-const productForm = document.getElementById('product-form');
-const productModalTitle = document.getElementById('product-modal-title');
+(function() {
+    'use strict';
 
-// --- State ---
-let currentProducts = [];
-let filteredProducts = [];
-let productsCurrentPage = 1;
-const productsPerPage = 10;
+    // --- DOM Elements ---
+    const productsTbody = document.getElementById('products-tbody');
+    const productModal = document.getElementById('product-modal');
+    const productForm = document.getElementById('product-form');
+    const productModalTitle = document.getElementById('product-modal-title');
+
+    // --- State ---
+    let currentProducts = [];
+    let filteredProducts = [];
+    let productsCurrentPage = 1;
+    const productsPerPage = 10;
 
 /**
  * Fetch products from Supabase
@@ -308,3 +311,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+// Make functions globally accessible
+window.showProductModal = showProductModal;
+
+})(); // End IIFE

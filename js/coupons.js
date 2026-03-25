@@ -2,12 +2,15 @@
 // KR-ADMIN - Coupons
 // ============================================
 
-document.addEventListener('DOMContentLoaded', () => {
-    const couponForm = document.getElementById('coupon-form');
-    if (couponForm) {
-        couponForm.addEventListener('submit', handleSaveCoupon);
-    }
-});
+(function() {
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const couponForm = document.getElementById('coupon-form');
+        if (couponForm) {
+            couponForm.addEventListener('submit', handleSaveCoupon);
+        }
+    });
 
 async function loadCoupons() {
     const tbody = document.getElementById('coupons-tbody');
@@ -101,3 +104,12 @@ async function deleteCoupon(id) {
         toast.error('No se pudo eliminar el cupón.');
     }
 }
+
+    // Make functions globally accessible
+    window.loadCoupons = loadCoupons;
+    window.showCouponModal = showCouponModal;
+    window.handleSaveCoupon = handleSaveCoupon;
+    window.editCoupon = editCoupon;
+    window.deleteCoupon = deleteCoupon;
+
+})(); // End IIFE

@@ -2,12 +2,15 @@
 // KR-ADMIN - Categories
 // ============================================
 
-document.addEventListener('DOMContentLoaded', () => {
-    const categoryForm = document.getElementById('category-form');
-    if (categoryForm) {
-        categoryForm.addEventListener('submit', handleSaveCategory);
-    }
-});
+(function() {
+    'use strict';
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const categoryForm = document.getElementById('category-form');
+        if (categoryForm) {
+            categoryForm.addEventListener('submit', handleSaveCategory);
+        }
+    });
 
 async function loadCategories() {
     const tbody = document.getElementById('categories-tbody');
@@ -91,3 +94,12 @@ async function deleteCategory(id) {
         toast.error('No se pudo eliminar la categoría. Asegúrate de que no esté siendo usada por ningún producto.');
     }
 }
+
+    // Make functions globally accessible
+    window.loadCategories = loadCategories;
+    window.showCategoryModal = showCategoryModal;
+    window.handleSaveCategory = handleSaveCategory;
+    window.editCategory = editCategory;
+    window.deleteCategory = deleteCategory;
+
+})(); // End IIFE
