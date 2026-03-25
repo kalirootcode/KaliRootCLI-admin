@@ -452,6 +452,13 @@ function showToast(message, type = 'info') {
 // Make showToast global
 window.showToast = showToast;
 
+// Toast wrapper for compatibility
+window.toast = {
+    success: (msg) => showToast(msg, 'success'),
+    error: (msg) => showToast(msg, 'error'),
+    info: (msg) => showToast(msg, 'info')
+};
+
 // Export
 window.AdminAnalytics = {
     loadDashboard,

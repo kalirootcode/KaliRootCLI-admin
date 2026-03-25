@@ -11,7 +11,7 @@ const productModalTitle = document.getElementById('product-modal-title');
 // --- State ---
 let currentProducts = [];
 let filteredProducts = [];
-let currentPage = 1;
+let productsCurrentPage = 1;
 const productsPerPage = 10;
 
 /**
@@ -43,7 +43,7 @@ async function loadProducts() {
 function renderProducts() {
     if (!productsTbody) return;
     
-    const startIndex = (currentPage - 1) * productsPerPage;
+    const startIndex = (productsCurrentPage - 1) * productsPerPage;
     const endIndex = startIndex + productsPerPage;
     const paginatedProducts = filteredProducts.slice(startIndex, endIndex);
 
@@ -85,11 +85,11 @@ function renderPagination() {
         const button = document.createElement('button');
         button.textContent = i;
         button.classList.add('pagination-btn');
-        if (i === currentPage) {
+        if (i === productsCurrentPage) {
             button.classList.add('active');
         }
         button.addEventListener('click', () => {
-            currentPage = i;
+            productsCurrentPage = i;
             renderProducts();
         });
         paginationContainer.appendChild(button);
