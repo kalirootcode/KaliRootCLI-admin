@@ -38,14 +38,14 @@ async function loadProducts() {
     try {
         const { data, error } = await supabaseAdmin
             .from('products')
-            .select('*')
+            .select('*, categories(name)') // Join with categories table
             .order('created_at', { ascending: false });
 
         if (error) throw error;
 
         currentProducts = data;
-        filteredProducts = data;
-        renderProducts();
+        filteredProducts = data; // Initialize filtered list
+        renderProducts(); // Render immediately
     } catch (error) {
         console.error('Error loading products:', error);
         toast.error('No se pudieron cargar los productos');
@@ -65,6 +65,7 @@ function renderProducts() {
     productsTbody.innerHTML = paginatedProducts.map(product => `
         <tr>
             <td>${product.name}</td>
+            <td>${product.categories ? product.categories.name : 'N/A'}</td>
             <td><span class="badge-type ${product.type}">${product.type}</span></td>
             <td>$${product.price.toFixed(2)}</td>
             <td>${product.stock === 0 ? 'Ilimitado' : product.stock}</td>
@@ -114,10 +115,22 @@ function renderPagination() {
 /**
  * Show the modal for adding or editing a product
  */
-function showProductModal(productId = null) {
+async function showProductModal(productId = null) {
     productForm.reset();
     document.getElementById('product-id').value = '';
     document.getElementById('product-video-file').value = '';
+
+    // --- Populate Categories Dropdown ---
+    const categorySelect = document.getElementById('product-category');
+    try {
+        const { data: categories, error } = await supabaseAdmin.from('categories').select('id, name');
+        if (error) throw error;
+        categorySelect.innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    } catch(e) {
+        toast.error('No se pudieron cargar las categorías.');
+        return;
+    }
+    // ---
 
     if (productId) {
         const product = currentProducts.find(p => p.id === productId);
@@ -131,6 +144,7 @@ function showProductModal(productId = null) {
             document.getElementById('product-stock').value = product.stock;
             document.getElementById('product-image-url').value = product.image_url;
             document.getElementById('product-published').checked = product.is_published;
+            categorySelect.value = product.category_id; // Set selected category
 
             const videoUrl = product.video_url;
             const videoUrlElement = document.getElementById('current-video-url');
@@ -235,6 +249,7 @@ productForm.addEventListener('submit', async (e) => {
         image_url: document.getElementById('product-image-url').value,
         is_published: document.getElementById('product-published').checked,
         video_url: videoUrl, // Add the new video URL (or existing one)
+        category_id: document.getElementById('product-category').value,
     };
 
     // 3. Save product data to Supabase
