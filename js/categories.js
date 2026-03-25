@@ -3,8 +3,6 @@
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadCategories();
-
     const categoryForm = document.getElementById('category-form');
     if (categoryForm) {
         categoryForm.addEventListener('submit', handleSaveCategory);

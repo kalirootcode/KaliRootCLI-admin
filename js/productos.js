@@ -14,21 +14,6 @@ let filteredProducts = [];
 let currentPage = 1;
 const productsPerPage = 10;
 
-// --- Functions ---
-
-/**
- * Search and filter products
- */
-function searchProducts() {
-    const searchTerm = document.getElementById('product-search').value.toLowerCase();
-    filteredProducts = currentProducts.filter(product => 
-        product.name.toLowerCase().includes(searchTerm) ||
-        product.type.toLowerCase().includes(searchTerm)
-    );
-    currentPage = 1;
-    renderProducts();
-}
-
 /**
  * Fetch products from Supabase
  */

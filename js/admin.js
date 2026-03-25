@@ -29,11 +29,11 @@ async function loadDashboard() {
 
 async function loadAdditionalStats() {
     try {
-        const client = await AdminSupabase.init();
+        if (!supabaseAdmin) return;
         
         // Active sessions (last 15 min)
         const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-        const { count: activeSessions } = await client
+        const { count: activeSessions } = await supabaseAdmin
             .from('cli_sessions')
             .select('*', { count: 'exact', head: true })
             .gte('last_activity', fifteenMinsAgo);
@@ -42,7 +42,7 @@ async function loadAdditionalStats() {
         document.getElementById('live-sessions').textContent = activeSessions || 0;
         
         // Average API latency
-        const { data: latencyData } = await client
+        const { data: latencyData } = await supabaseAdmin
             .from('cli_usage_log')
             .select('latency_ms')
             .order('created_at', { ascending: false })
@@ -201,13 +201,13 @@ function loadCharts(analytics) {
 }
 
 async function loadTicketStats() {
-    const client = await AdminSupabase.init();
+    if (!supabaseAdmin) return { open: 0, in_progress: 0, resolved: 0 };
     
     try {
         const [open, inProgress, resolved] = await Promise.all([
-            client.from('support_tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
-            client.from('support_tickets').select('*', { count: 'exact', head: true }).eq('status', 'in_progress'),
-            client.from('support_tickets').select('*', { count: 'exact', head: true }).eq('status', 'resolved')
+            supabaseAdmin.from('support_tickets').select('*', { count: 'exact', head: true }).eq('status', 'open'),
+            supabaseAdmin.from('support_tickets').select('*', { count: 'exact', head: true }).eq('status', 'in_progress'),
+            supabaseAdmin.from('support_tickets').select('*', { count: 'exact', head: true }).eq('status', 'resolved')
         ]);
         
         return {
@@ -222,9 +222,7 @@ async function loadTicketStats() {
 
 async function loadCreditsUsageChart() {
     const ctx = document.getElementById('credits-usage-chart')?.getContext('2d');
-    if (!ctx) return;
-    
-    const client = await AdminSupabase.init();
+    if (!ctx || !supabaseAdmin) return;
     
     // Get usage for last 7 days
     const days = [];
@@ -236,7 +234,7 @@ async function loadCreditsUsageChart() {
         const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
         const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).toISOString();
         
-        const { count } = await client
+        const { count } = await supabaseAdmin
             .from('cli_usage_log')
             .select('*', { count: 'exact', head: true })
             .eq('action_type', 'ai_query')
@@ -298,12 +296,10 @@ async function loadCreditsUsageChart() {
 
 async function loadGeoChart() {
     const ctx = document.getElementById('geo-chart')?.getContext('2d');
-    if (!ctx) return;
-    
-    const client = await AdminSupabase.init();
+    if (!ctx || !supabaseAdmin) return;
     
     // Get sessions by country
-    const { data: sessions } = await client
+    const { data: sessions } = await supabaseAdmin
         .from('cli_sessions')
         .select('country_code, country')
         .not('country_code', 'is', null);

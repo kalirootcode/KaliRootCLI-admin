@@ -3,8 +3,6 @@
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadCoupons();
-
     const couponForm = document.getElementById('coupon-form');
     if (couponForm) {
         couponForm.addEventListener('submit', handleSaveCoupon);
