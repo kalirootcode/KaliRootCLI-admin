@@ -57,6 +57,10 @@
                 <span class="nav-text">Cursos AI</span>
                 <span class="badge" id="courses-count">0</span>
             </a>
+            <a href="#products" class="nav-item" data-section="products">
+                <span class="nav-icon">🛍️</span>
+                <span class="nav-text">Infoproductos</span>
+            </a>
         </nav>
 
         <div class="sidebar-footer">
@@ -433,7 +437,102 @@
                 </div>
             </div>
         </section>
+
+        <!-- Infoproducts Section -->
+        <section class="content-section" id="section-products">
+            <div class="section-header">
+                <h2>🛍️ Gestión de Infoproductos</h2>
+                <div class="header-actions">
+                    <div class="search-box">
+                        <input type="text" id="product-search" placeholder="Buscar producto...">
+                        <button onclick="searchProducts()">🔍</button>
+                    </div>
+                    <button class="btn-primary" onclick="showProductModal()">+ Agregar Producto</button>
+                </div>
+            </div>
+
+            <div class="table-container glass">
+                <table class="data-table" id="products-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Tipo</th>
+                            <th>Precio</th>
+                            <th>Stock</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="products-tbody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination" id="products-pagination">
+                <!-- Pagination buttons -->
+            </div>
+        </section>
     </main>
+
+    <!-- Product Modal -->
+    <div class="modal" id="product-modal">
+        <div class="modal-content glass">
+            <div class="modal-header">
+                <h2 id="product-modal-title">Agregar Infoproducto</h2>
+                <button class="modal-close" onclick="closeModal('product-modal')">&times;</button>
+            </div>
+            <form id="product-form">
+                <input type="hidden" id="product-id">
+                <div class="form-group">
+                    <label>Nombre del Producto</label>
+                    <input type="text" id="product-name" required>
+                </div>
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <textarea id="product-description" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tipo de Producto</label>
+                        <select id="product-type" required>
+                            <option value="curso">Curso en Video</option>
+                            <option value="ebook">Ebook</option>
+                            <option value="software">Software</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Precio (USD)</label>
+                        <input type="number" id="product-price" required min="0" step="0.01">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Stock (0 para ilimitado)</label>
+                        <input type="number" id="product-stock" value="0" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>URL de Imagen</label>
+                        <input type="url" id="product-image-url">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Video del Curso (Subir archivo)</label>
+                    <input type="file" id="product-video-file" accept="video/*">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="product-published" checked>
+                        Publicar producto
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal('product-modal')">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar Producto</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Course Preview Modal -->
     <div class="modal" id="course-preview-modal">
@@ -562,6 +661,8 @@
 
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- AWS S3 SDK -->
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-s3.min.js"></script>
     <!-- Config (generated by GitHub Actions) -->
     <script src="js/config.js"></script>
     <script src="js/supabase-admin.js"></script>
@@ -573,6 +674,7 @@
     <script src="js/sessions.js"></script>
     <script src="js/news.js"></script>
     <script src="js/courses.js"></script>
+    <script src="js/productos.js"></script>
 </body>
 
 </html>
