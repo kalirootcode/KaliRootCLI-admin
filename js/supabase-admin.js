@@ -1,58 +1,35 @@
-/**
- * KR-CLI DOMINION - Admin Supabase Client
- * Supabase client for admin operations
- * Credentials are injected by GitHub Actions from secrets
- */
+// ============================================
+// KR-ADMIN - Supabase Client
+// ============================================
 
 // Config is injected by GitHub Actions build process
-// See .github/workflows/deploy.yml
 function getConfig() {
     if (typeof window.SUPABASE_CONFIG === 'undefined') {
         console.error('⚠️ SUPABASE_CONFIG not found. Make sure config.js is loaded.');
-        console.error('For local dev, create js/config.js with:');
-        console.error('window.SUPABASE_CONFIG = { url: "...", anonKey: "..." }');
         return null;
     }
     return window.SUPABASE_CONFIG;
 }
 
-let adminClient = null;
-let supabaseAdmin = null; // Make it globally accessible
+const config = getConfig();
+let supabaseAdmin = null;
 
-/**
- * Initialize Supabase admin client
- */
-async function initAdminClient() {
-    if (adminClient) return adminClient;
-
-    const config = getConfig();
-    if (!config || !config.url || !config.anonKey) {
-        console.error('❌ Invalid Supabase configuration');
-        return null;
-    }
-
-    // Wait for Supabase SDK if not loaded
-    if (typeof supabase === 'undefined') {
-        console.error('❌ Supabase SDK not loaded');
-        return null;
-    }
-
-    adminClient = supabase.createClient(config.url, config.anonKey);
-    supabaseAdmin = adminClient; // Assign to global variable
-    console.log('✅ Supabase admin client initialized');
-    return adminClient;
+if (config && config.url && config.anonKey) {
+    supabaseAdmin = supabase.createClient(config.url, config.anonKey);
+    console.log('✅ Supabase admin client initialized.');
+} else {
+    console.error('❌ Invalid Supabase configuration. Cannot initialize client.');
 }
 
 // ===== Admin Authentication =====
 
 async function adminLogin(email, password) {
-    const client = await initAdminClient();
-    if (!client) {
+    if (!supabaseAdmin) {
         return { success: false, error: 'Error de conexión con la base de datos' };
     }
 
     // Check admin_users table
-    const { data: admin, error } = await client
+    const { data: admin, error } = await supabaseAdmin
         .from('admin_users')
         .select('*')
         .eq('email', email)
@@ -63,7 +40,6 @@ async function adminLogin(email, password) {
         return { success: false, error: 'Credenciales inválidas' };
     }
 
-    // For demo: simple password check
     // The password hash in migration is for: krcli_admin_2026
     const isValid = await verifyPassword(password, admin.password_hash);
 
@@ -72,7 +48,7 @@ async function adminLogin(email, password) {
     }
 
     // Update last login
-    await client
+    await supabaseAdmin
         .from('admin_users')
         .update({ last_login: new Date().toISOString() })
         .eq('id', admin.id);
@@ -111,10 +87,9 @@ function adminLogout() {
 // ===== User Management =====
 
 async function getAllUsers(page = 1, limit = 20, search = '') {
-    const client = await initAdminClient();
-    if (!client) return { users: [], total: 0 };
+    if (!supabaseAdmin) return { users: [], total: 0 };
 
-    let query = client
+    let query = supabaseAdmin
         .from('cli_users')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
@@ -135,10 +110,9 @@ async function getAllUsers(page = 1, limit = 20, search = '') {
 }
 
 async function getUserById(userId) {
-    const client = await initAdminClient();
-    if (!client) return null;
+    if (!supabaseAdmin) return null;
 
-    const { data, error } = await client
+    const { data, error } = await supabaseAdmin
         .from('cli_users')
         .select('*')
         .eq('id', userId)
@@ -148,10 +122,9 @@ async function getUserById(userId) {
 }
 
 async function updateUser(userId, updates) {
-    const client = await initAdminClient();
-    if (!client) return { success: false, error: 'No connection' };
+    if (!supabaseAdmin) return { success: false, error: 'No connection' };
 
-    const { error } = await client
+    const { error } = await supabaseAdmin
         .from('cli_users')
         .update(updates)
         .eq('id', userId);
@@ -160,10 +133,9 @@ async function updateUser(userId, updates) {
 }
 
 async function deleteUserById(userId) {
-    const client = await initAdminClient();
-    if (!client) return { success: false, error: 'No connection' };
+    if (!supabaseAdmin) return { success: false, error: 'No connection' };
 
-    const { error } = await client
+    const { error } = await supabaseAdmin
         .from('cli_users')
         .delete()
         .eq('id', userId);
@@ -172,10 +144,9 @@ async function deleteUserById(userId) {
 }
 
 async function addCreditsToUser(email, amount) {
-    const client = await initAdminClient();
-    if (!client) return { success: false, error: 'No connection' };
+    if (!supabaseAdmin) return { success: false, error: 'No connection' };
 
-    const { data: user, error: findError } = await client
+    const { data: user, error: findError } = await supabaseAdmin
         .from('cli_users')
         .select('id, credit_balance')
         .eq('email', email)
@@ -185,7 +156,7 @@ async function addCreditsToUser(email, amount) {
         return { success: false, error: 'Usuario no encontrado' };
     }
 
-    const { error } = await client
+    const { error } = await supabaseAdmin
         .from('cli_users')
         .update({ credit_balance: user.credit_balance + amount })
         .eq('id', user.id);
@@ -194,10 +165,9 @@ async function addCreditsToUser(email, amount) {
 }
 
 async function activatePremium(email, days) {
-    const client = await initAdminClient();
-    if (!client) return { success: false, error: 'No connection' };
+    if (!supabaseAdmin) return { success: false, error: 'No connection' };
 
-    const { data: user, error: findError } = await client
+    const { data: user, error: findError } = await supabaseAdmin
         .from('cli_users')
         .select('id')
         .eq('email', email)
@@ -210,7 +180,7 @@ async function activatePremium(email, days) {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + days);
 
-    const { error } = await client
+    const { error } = await supabaseAdmin
         .from('cli_users')
         .update({
             subscription_status: 'premium',
@@ -224,39 +194,38 @@ async function activatePremium(email, days) {
 // ===== Analytics =====
 
 async function getAnalytics() {
-    const client = await initAdminClient();
-    if (!client) return {
+    if (!supabaseAdmin) return {
         totalUsers: 0, activeUsers: 0, premiumUsers: 0,
         freeUsers: 0, totalRevenue: 0, openTickets: 0
     };
 
     try {
         // Get counts
-        const { count: totalUsers } = await client
+        const { count: totalUsers } = await supabaseAdmin
             .from('cli_users')
             .select('*', { count: 'exact', head: true });
 
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const { count: activeUsers } = await client
+        const { count: activeUsers } = await supabaseAdmin
             .from('cli_users')
             .select('*', { count: 'exact', head: true })
             .gte('updated_at', thirtyDaysAgo.toISOString());
 
-        const { count: premiumUsers } = await client
+        const { count: premiumUsers } = await supabaseAdmin
             .from('cli_users')
             .select('*', { count: 'exact', head: true })
             .eq('subscription_status', 'premium')
             .gte('subscription_expiry_date', new Date().toISOString());
 
-        const { data: revenueData } = await client
+        const { data: revenueData } = await supabaseAdmin
             .from('cli_users')
             .select('total_spent');
 
         const totalRevenue = revenueData?.reduce((sum, u) => sum + (parseFloat(u.total_spent) || 0), 0) || 0;
 
-        const { count: openTickets } = await client
+        const { count: openTickets } = await supabaseAdmin
             .from('support_tickets')
             .select('*', { count: 'exact', head: true })
             .eq('status', 'open');
@@ -279,10 +248,9 @@ async function getAnalytics() {
 }
 
 async function getRecentActivity(limit = 10) {
-    const client = await initAdminClient();
-    if (!client) return [];
+    if (!supabaseAdmin) return [];
 
-    const { data, error } = await client
+    const { data, error } = await supabaseAdmin
         .from('web_activity_log')
         .select('*, cli_users(email, username)')
         .order('created_at', { ascending: false })
@@ -294,10 +262,9 @@ async function getRecentActivity(limit = 10) {
 // ===== Support Tickets =====
 
 async function getTickets(status = 'all') {
-    const client = await initAdminClient();
-    if (!client) return [];
+    if (!supabaseAdmin) return [];
 
-    let query = client
+    let query = supabaseAdmin
         .from('support_tickets')
         .select('*, support_messages(id, sender_type, is_read)')
         .order('updated_at', { ascending: false });
@@ -311,17 +278,16 @@ async function getTickets(status = 'all') {
 }
 
 async function getTicketMessages(ticketId) {
-    const client = await initAdminClient();
-    if (!client) return [];
+    if (!supabaseAdmin) return [];
 
-    const { data, error } = await client
+    const { data, error } = await supabaseAdmin
         .from('support_messages')
         .select('*')
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true });
 
     // Mark as read
-    await client
+    await supabaseAdmin
         .from('support_messages')
         .update({ is_read: true })
         .eq('ticket_id', ticketId)
@@ -331,12 +297,11 @@ async function getTicketMessages(ticketId) {
 }
 
 async function sendAdminReply(ticketId, message) {
-    const client = await initAdminClient();
-    if (!client) return { success: false, error: 'No connection' };
+    if (!supabaseAdmin) return { success: false, error: 'No connection' };
     
     const admin = getAdminSession();
 
-    const { error } = await client
+    const { error } = await supabaseAdmin
         .from('support_messages')
         .insert({
             ticket_id: ticketId,
@@ -346,7 +311,7 @@ async function sendAdminReply(ticketId, message) {
         });
 
     // Update ticket
-    await client
+    await supabaseAdmin
         .from('support_tickets')
         .update({
             status: 'in_progress',
@@ -358,10 +323,9 @@ async function sendAdminReply(ticketId, message) {
 }
 
 async function updateTicketStatus(ticketId, status) {
-    const client = await initAdminClient();
-    if (!client) return { success: false };
+    if (!supabaseAdmin) return { success: false };
 
-    const { error } = await client
+    const { error } = await supabaseAdmin
         .from('support_tickets')
         .update({ status, updated_at: new Date().toISOString() })
         .eq('id', ticketId);
@@ -371,7 +335,6 @@ async function updateTicketStatus(ticketId, status) {
 
 // Export globally
 window.AdminSupabase = {
-    init: initAdminClient,
     login: adminLogin,
     getSession: getAdminSession,
     logout: adminLogout,
